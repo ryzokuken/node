@@ -201,6 +201,11 @@ struct PackageConfig {
   V(message_port_string, "messagePort")                                       \
   V(message_port_constructor_string, "MessagePort")                           \
   V(minttl_string, "minttl")                                                  \
+  V(module_parameter_exports, "exports")                                      \
+  V(module_parameter_require, "require")                                      \
+  V(module_parameter_module, "module")                                        \
+  V(module_parameter_filename, "__filename")                                  \
+  V(module_parameter_dirname, "__dirname")                                    \
   V(modulus_string, "modulus")                                                \
   V(name_string, "name")                                                      \
   V(netmask_string, "netmask")                                                \

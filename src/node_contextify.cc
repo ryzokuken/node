@@ -207,6 +207,7 @@ void ContextifyContext::Init(Environment* env, Local<Object> target) {
 
   env->SetMethod(target, "makeContext", MakeContext);
   env->SetMethod(target, "isContext", IsContext);
+  env->SetMethod(target, "getWrappedFunction", GetWrappedFunction);
 }
 
 
@@ -268,6 +269,37 @@ void ContextifyContext::IsContext(const FunctionCallbackInfo<Value>& args) {
       sandbox->HasPrivate(env->context(),
                           env->contextify_context_private_symbol());
   args.GetReturnValue().Set(result.FromJust());
+}
+
+
+void ContextifyContext::GetWrappedFunction(const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  Local<Context> context = env->context();
+
+  CHECK(args[0]->IsString());
+  Local<String> source = args[0].As<String>();
+  ScriptCompiler::Source script_source(source);
+
+  Local<String> params[] = {
+    env->module_parameter_exports(),
+    env->module_parameter_require(),
+    env->module_parameter_module(),
+    env->module_parameter_filename(),
+    env->module_parameter_dirname()
+  };
+
+  TryCatch try_catch(env->isolate());
+  Context::Scope scope(context);
+
+  MaybeLocal<Function> maybe_fun = ScriptCompiler::CompileFunctionInContext(
+      context, &script_source, 5, params, 0, nullptr);
+
+  Local<Function> fun;
+  if (maybe_fun.ToLocal(&fun)) {
+    args.GetReturnValue().Set(fun);
+  } else {
+    try_catch.ReThrow();
+  }
 }
 
 
