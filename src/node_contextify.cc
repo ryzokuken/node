@@ -272,83 +272,6 @@ void ContextifyContext::IsContext(const FunctionCallbackInfo<Value>& args) {
 }
 
 
-void ContextifyContext::GetWrappedFunction(
-    const FunctionCallbackInfo<Value>& args) {
-  Environment* env = Environment::GetCurrent(args);
-  Local<Context> context = env->context();
-  Isolate* isolate = env->isolate();
-
-  CHECK(args[0]->IsString());
-  Local<String> code = args[0].As<String>();
-
-  CHECK(args[1]->IsBoolean());
-  bool produce_cached_data = args[1]->IsTrue();
-
-  Local<Uint8Array> cached_data_buf;
-  if (!args[2]->IsUndefined()) {
-    CHECK(args[2]->IsUint8Array());
-    cached_data_buf = args[2].As<Uint8Array>();
-  }
-
-  // TODO(ryzokuken): Add support for sandboxing.
-
-  ScriptCompiler::CachedData* cached_data = nullptr;
-  if (!cached_data_buf.IsEmpty()) {
-    ArrayBuffer::Contents contents = cached_data_buf->Buffer()->GetContents();
-    uint8_t* data = static_cast<uint8_t*>(contents.Data());
-    cached_data = new ScriptCompiler::CachedData(
-      data + cached_data_buf->ByteOffset(), cached_data_buf->ByteLength());
-  }
-
-  ScriptCompiler::Source source(code, cached_data);
-
-  ScriptCompiler::CompileOptions options;
-  if (source.GetCachedData() == nullptr) {
-    options = ScriptCompiler::kNoCompileOptions;
-  } else {
-    options = ScriptCompiler::kConsumeCodeCache;
-  }
-
-  Local<String> params[] = {
-    env->module_parameter_exports(),
-    env->module_parameter_require(),
-    env->module_parameter_module(),
-    env->module_parameter_filename(),
-    env->module_parameter_dirname()
-  };
-
-  TryCatch try_catch(isolate);
-  Context::Scope scope(context);
-
-  MaybeLocal<Function> maybe_fun = ScriptCompiler::CompileFunctionInContext(
-      context, &source, 5, params, 0, nullptr, options);
-
-  Local<Function> fun;
-  if (maybe_fun.IsEmpty() || !maybe_fun.ToLocal(&fun)) {
-    try_catch.ReThrow();
-    return;
-  }
-
-  if (produce_cached_data) {
-    const ScriptCompiler::CachedData* cached_data =
-      ScriptCompiler::CreateCodeCacheForFunction(fun, code);
-    bool cached_data_produced = cached_data != nullptr;
-    if (cached_data_produced) {
-      MaybeLocal<Object> buf = Buffer::Copy(
-          env,
-          reinterpret_cast<const char*>(cached_data->data),
-          cached_data->length);
-      fun->Set(env->cached_data_string(), buf.ToLocalChecked());
-    }
-    fun->Set(
-        env->cached_data_produced_string(),
-        Boolean::New(isolate, cached_data_produced));
-  }
-
-  args.GetReturnValue().Set(fun);
-}
-
-
 void ContextifyContext::WeakCallback(
     const WeakCallbackInfo<ContextifyContext>& data) {
   ContextifyContext* context = data.GetParameter();
@@ -1027,6 +950,88 @@ class ContextifyScript : public BaseObject {
     MakeWeak();
   }
 };
+
+
+void ContextifyContext::GetWrappedFunction(
+    const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  Local<Context> context = env->context();
+  Isolate* isolate = env->isolate();
+
+  CHECK(args[0]->IsString());
+  Local<String> code = args[0].As<String>();
+
+  CHECK(args[1]->IsString());
+  Local<String> filename = args[1].As<String>();
+
+  CHECK(args[2]->IsBoolean());
+  bool produce_cached_data = args[2]->IsTrue();
+
+  Local<Uint8Array> cached_data_buf;
+  if (!args[3]->IsUndefined()) {
+    CHECK(args[3]->IsUint8Array());
+    cached_data_buf = args[3].As<Uint8Array>();
+  }
+
+  // TODO(ryzokuken): Add support for sandboxing.
+
+  ScriptCompiler::CachedData* cached_data = nullptr;
+  if (!cached_data_buf.IsEmpty()) {
+    ArrayBuffer::Contents contents = cached_data_buf->Buffer()->GetContents();
+    uint8_t* data = static_cast<uint8_t*>(contents.Data());
+    cached_data = new ScriptCompiler::CachedData(
+      data + cached_data_buf->ByteOffset(), cached_data_buf->ByteLength());
+  }
+
+  ScriptOrigin origin(filename);
+  ScriptCompiler::Source source(code, origin, cached_data);
+
+  ScriptCompiler::CompileOptions options;
+  if (source.GetCachedData() == nullptr) {
+    options = ScriptCompiler::kNoCompileOptions;
+  } else {
+    options = ScriptCompiler::kConsumeCodeCache;
+  }
+
+  Local<String> params[] = {
+    env->module_parameter_exports(),
+    env->module_parameter_require(),
+    env->module_parameter_module(),
+    env->module_parameter_filename(),
+    env->module_parameter_dirname()
+  };
+
+  TryCatch try_catch(isolate);
+  Context::Scope scope(context);
+
+  MaybeLocal<Function> maybe_fun = ScriptCompiler::CompileFunctionInContext(
+      context, &source, 5, params, 0, nullptr, options);
+
+  Local<Function> fun;
+  if (maybe_fun.IsEmpty() || !maybe_fun.ToLocal(&fun)) {
+    ContextifyScript::DecorateErrorStack(env, try_catch);
+    try_catch.ReThrow();
+    return;
+  }
+
+  if (produce_cached_data) {
+    const ScriptCompiler::CachedData* cached_data =
+      ScriptCompiler::CreateCodeCacheForFunction(fun, code);
+    bool cached_data_produced = cached_data != nullptr;
+    if (cached_data_produced) {
+      MaybeLocal<Object> buf = Buffer::Copy(
+          env,
+          reinterpret_cast<const char*>(cached_data->data),
+          cached_data->length);
+      fun->Set(env->cached_data_string(), buf.ToLocalChecked());
+    }
+    fun->Set(
+        env->cached_data_produced_string(),
+        Boolean::New(isolate, cached_data_produced));
+  }
+
+  args.GetReturnValue().Set(fun);
+}
 
 
 void Initialize(Local<Object> target,

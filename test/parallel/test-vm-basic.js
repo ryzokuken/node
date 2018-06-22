@@ -130,21 +130,21 @@ const vm = require('vm');
 });
 
 // vm.getWrappedFunction
-{
-  assert.strictEqual(
-    vm.getWrappedFunction('console.log("Hello, World!");'),
-    'function (exports, require, module, __filename, __dirname)'
-    + '{\nconsole.log("Hello, World!");\n}'
-  );
+// {
+//   assert.strictEqual(
+//     vm.getWrappedFunction('console.log("Hello, World!");'),
+//     'function (exports, require, module, __filename, __dirname)'
+//     + '{\nconsole.log("Hello, World!");\n}'
+//   );
 
-  assert.doesNotThrow(vm.getWrappedFunction('return;'))
+//   assert.doesNotThrow(vm.getWrappedFunction('return;'))
 
-  common.expectsError(() => {
-    vm.getWrappedFunction(
-      '});\n\n(function() {\nconsole.log(1);\n})();\n\n(function() {'
-    );
-  }, {
-    type: SyntaxError,
-    message: 'Unexpected token }'
-  });
-}
+//   common.expectsError(() => {
+//     vm.getWrappedFunction(
+//       '});\n\n(function() {\nconsole.log(1);\n})();\n\n(function() {'
+//     );
+//   }, {
+//     type: SyntaxError,
+//     message: 'Unexpected token }'
+//   });
+// }
