@@ -272,7 +272,8 @@ void ContextifyContext::IsContext(const FunctionCallbackInfo<Value>& args) {
 }
 
 
-void ContextifyContext::GetWrappedFunction(const FunctionCallbackInfo<Value>& args) {
+void ContextifyContext::GetWrappedFunction(
+    const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   Local<Context> context = env->context();
   Isolate* isolate = env->isolate();
@@ -289,7 +290,7 @@ void ContextifyContext::GetWrappedFunction(const FunctionCallbackInfo<Value>& ar
     cached_data_buf = args[2].As<Uint8Array>();
   }
 
-  //TODO(ryzokuken): Add support for sandboxing.
+  // TODO(ryzokuken): Add support for sandboxing.
 
   ScriptCompiler::CachedData* cached_data = nullptr;
   if (!cached_data_buf.IsEmpty()) {
