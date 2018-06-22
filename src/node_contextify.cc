@@ -285,9 +285,11 @@ void ContextifyContext::GetWrappedFunction(const FunctionCallbackInfo<Value>& ar
 
   Local<Uint8Array> cached_data_buf;
   if (!args[2]->IsUndefined()) {
-    CHECK(args[2]->IsUint8Array);
+    CHECK(args[2]->IsUint8Array());
     cached_data_buf = args[2].As<Uint8Array>();
   }
+
+  //TODO(ryzokuken): Add support for sandboxing.
 
   ScriptCompiler::CachedData* cached_data = nullptr;
   if (!cached_data_buf.IsEmpty()) {
