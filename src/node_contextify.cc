@@ -323,6 +323,7 @@ void ContextifyContext::GetWrappedFunction(const FunctionCallbackInfo<Value>& ar
   Local<Function> fun;
   if (maybe_fun.IsEmpty() || !maybe_fun.ToLocal(&fun)) {
     try_catch.ReThrow();
+    return;
   }
 
   if (produce_cached_data) {
