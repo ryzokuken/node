@@ -130,21 +130,28 @@ const vm = require('vm');
 });
 
 // vm.getWrappedFunction
-// {
-//   assert.strictEqual(
-//     vm.getWrappedFunction('console.log("Hello, World!");'),
-//     'function (exports, require, module, __filename, __dirname)'
-//     + '{\nconsole.log("Hello, World!");\n}'
-//   );
+{
+  assert.strictEqual(
+    vm.getWrappedFunction('console.log("Hello, World!")', '', false).toString(),
+    'function (exports, require, module, __filename, __dirname)' +
+      '{\nconsole.log("Hello, World!");\n}'
+  );
 
-//   assert.doesNotThrow(vm.getWrappedFunction('return;'))
+  assert.strictEqual(
+    vm.getWrappedFunction(
+      'return exports + require + module + __filename + __dirname', '', false
+    )('ab', 'cd', 'ef', 'gh', 'ij'),
+    'abcdefghij'
+  );
 
-//   common.expectsError(() => {
-//     vm.getWrappedFunction(
-//       '});\n\n(function() {\nconsole.log(1);\n})();\n\n(function() {'
-//     );
-//   }, {
-//     type: SyntaxError,
-//     message: 'Unexpected token }'
-//   });
-// }
+  vm.getWrappedFunction('return', '', false); // Should not throw on 'return'
+
+  common.expectsError(() => {
+    vm.getWrappedFunction(
+      '});\n\n(function() {\nconsole.log(1);\n})();\n\n(function() {', '', false
+    );
+  }, {
+    type: SyntaxError,
+    message: 'Unexpected token }'
+  });
+}

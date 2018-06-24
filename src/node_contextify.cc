@@ -955,8 +955,8 @@ class ContextifyScript : public BaseObject {
 void ContextifyContext::GetWrappedFunction(
     const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
-  Local<Context> context = env->context();
   Isolate* isolate = env->isolate();
+  Local<Context> context = env->context();
 
   CHECK(args[0]->IsString());
   Local<String> code = args[0].As<String>();
