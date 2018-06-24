@@ -958,23 +958,47 @@ void ContextifyContext::GetWrappedFunction(
   Isolate* isolate = env->isolate();
   Local<Context> context = env->context();
 
+  // Argument 1: source code
   CHECK(args[0]->IsString());
   Local<String> code = args[0].As<String>();
 
+  // Argument 2: filename
   CHECK(args[1]->IsString());
   Local<String> filename = args[1].As<String>();
 
-  CHECK(args[2]->IsBoolean());
-  bool produce_cached_data = args[2]->IsTrue();
+  // Argument 3: line offset
+  CHECK(args[2]->IsNumber());
+  Local<Integer> line_offset = args[2].As<Integer>();
 
+  // Argument 4: column offset
+  CHECK(args[3]->IsNumber());
+  Local<Integer> column_offset = args[3].As<Integer>();
+
+  // Argument 5: cached data (optional)
   Local<Uint8Array> cached_data_buf;
-  if (!args[3]->IsUndefined()) {
-    CHECK(args[3]->IsUint8Array());
-    cached_data_buf = args[3].As<Uint8Array>();
+  if (!args[4]->IsUndefined()) {
+    CHECK(args[4]->IsUint8Array());
+    cached_data_buf = args[4].As<Uint8Array>();
   }
 
-  // TODO(ryzokuken): Add support for sandboxing.
+  // Argument 6: produce cache data
+  CHECK(args[5]->IsBoolean());
+  bool produce_cached_data = args[5]->IsTrue();
 
+  //Argument 7: parsing context (optional)
+  Local<Context> parsing_context;
+  if (!args[6]->IsUndefined()) {
+    CHECK(args[6]->IsObject());
+    ContextifyContext* sandbox =
+      ContextifyContext::ContextFromContextifiedSandbox(
+          env, args[6].As<Object>());
+    CHECK_NOT_NULL(sandbox);
+    parsing_context = sandbox->context();
+  } else {
+    parsing_context = context;
+  }
+
+  // Read cache from cached data buffer
   ScriptCompiler::CachedData* cached_data = nullptr;
   if (!cached_data_buf.IsEmpty()) {
     ArrayBuffer::Contents contents = cached_data_buf->Buffer()->GetContents();
@@ -983,9 +1007,8 @@ void ContextifyContext::GetWrappedFunction(
       data + cached_data_buf->ByteOffset(), cached_data_buf->ByteLength());
   }
 
-  ScriptOrigin origin(filename);
+  ScriptOrigin origin(filename, line_offset, column_offset);
   ScriptCompiler::Source source(code, origin, cached_data);
-
   ScriptCompiler::CompileOptions options;
   if (source.GetCachedData() == nullptr) {
     options = ScriptCompiler::kNoCompileOptions;
@@ -1002,7 +1025,7 @@ void ContextifyContext::GetWrappedFunction(
   };
 
   TryCatch try_catch(isolate);
-  Context::Scope scope(context);
+  Context::Scope scope(parsing_context);
 
   MaybeLocal<Function> maybe_fun = ScriptCompiler::CompileFunctionInContext(
       context, &source, 5, params, 0, nullptr, options);
