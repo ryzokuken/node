@@ -133,8 +133,8 @@ const vm = require('vm');
 {
   assert.strictEqual(
     vm.getWrappedFunction('console.log("Hello, World!")', '', false).toString(),
-    'function (exports, require, module, __filename, __dirname)' +
-      '{\nconsole.log("Hello, World!");\n}'
+    'function (exports, require, module, __filename, __dirname) ' +
+      '{\nconsole.log("Hello, World!")\n}'
   );
 
   assert.strictEqual(
