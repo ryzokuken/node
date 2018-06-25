@@ -998,6 +998,13 @@ void ContextifyContext::GetWrappedFunction(
     parsing_context = context;
   }
 
+  // Argument 8: params for the function (optional)
+  Local<Array> params_buf;
+  if (!args[7]->IsUndefined()) {
+    CHECK(args[7]->IsArray());
+    params_buf = args[7].As<Array>();
+  }
+
   // Read cache from cached data buffer
   ScriptCompiler::CachedData* cached_data = nullptr;
   if (!cached_data_buf.IsEmpty()) {
@@ -1016,19 +1023,39 @@ void ContextifyContext::GetWrappedFunction(
     options = ScriptCompiler::kConsumeCodeCache;
   }
 
-  Local<String> params[] = {
-    env->module_parameter_exports(),
-    env->module_parameter_require(),
-    env->module_parameter_module(),
-    env->module_parameter_filename(),
-    env->module_parameter_dirname()
-  };
-
   TryCatch try_catch(isolate);
   Context::Scope scope(parsing_context);
 
+  // Read params from params buffer
+  size_t params_len;
+  Local<String> *params;
+  if (!params_buf.IsEmpty()) {
+    params_len = params_buf->Length();
+    params = new Local<String>[params_len];
+
+    for (int32_t n = 0; n < params_len; n++) {
+      Local<Value> val = params_buf->Get(context, n).ToLocalChecked();
+      if (val->IsString()) {
+        params[n] = val.As<String>();
+      } else {
+        ContextifyScript::DecorateErrorStack(env, try_catch);
+        try_catch.ReThrow();
+        return;
+      }
+    }
+  } else {
+    params_len = 5;
+    params = new Local<String>[5];
+
+    params[0] = env->module_parameter_exports();
+    params[1] = env->module_parameter_require();
+    params[2] = env->module_parameter_module();
+    params[3] = env->module_parameter_filename();
+    params[4] = env->module_parameter_dirname();
+  }
+
   MaybeLocal<Function> maybe_fun = ScriptCompiler::CompileFunctionInContext(
-      context, &source, 5, params, 0, nullptr, options);
+      context, &source, params_len, params, 0, nullptr, options);
 
   Local<Function> fun;
   if (maybe_fun.IsEmpty() || !maybe_fun.ToLocal(&fun)) {
