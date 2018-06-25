@@ -985,7 +985,7 @@ void ContextifyContext::GetWrappedFunction(
   CHECK(args[5]->IsBoolean());
   bool produce_cached_data = args[5]->IsTrue();
 
-  //Argument 7: parsing context (optional)
+  // Argument 7: parsing context (optional)
   Local<Context> parsing_context;
   if (!args[6]->IsUndefined()) {
     CHECK(args[6]->IsObject());
