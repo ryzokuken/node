@@ -129,26 +129,26 @@ const vm = require('vm');
   });
 });
 
-// vm.getWrappedFunction
+// vm.compileFunction
 {
   assert.strictEqual(
-    vm.getWrappedFunction('console.log("Hello, World!")', '').toString(),
-    'function (exports, require, module, __filename, __dirname) ' +
-      '{\nconsole.log("Hello, World!")\n}'
+    vm.compileFunction('console.log("Hello, World!")').toString(),
+    'function () {\nconsole.log("Hello, World!")\n}'
   );
 
   assert.strictEqual(
-    vm.getWrappedFunction(
-      'return exports + require + module + __filename + __dirname', ''
+    vm.compileFunction(
+      'return p + q + r + s + t',
+      ['p', 'q', 'r', 's', 't']
     )('ab', 'cd', 'ef', 'gh', 'ij'),
     'abcdefghij'
   );
 
-  vm.getWrappedFunction('return', ''); // Should not throw on 'return'
+  vm.compileFunction('return'); // Should not throw on 'return'
 
   common.expectsError(() => {
-    vm.getWrappedFunction(
-      '});\n\n(function() {\nconsole.log(1);\n})();\n\n(function() {', ''
+    vm.compileFunction(
+      '});\n\n(function() {\nconsole.log(1);\n})();\n\n(function() {'
     );
   }, {
     type: SyntaxError,

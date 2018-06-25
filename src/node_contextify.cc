@@ -1028,7 +1028,7 @@ void ContextifyContext::GetWrappedFunction(
 
   // Read params from params buffer
   size_t params_len;
-  Local<String> *params;
+  Local<String>* params;
   if (!params_buf.IsEmpty()) {
     params_len = params_buf->Length();
     params = new Local<String>[params_len];
