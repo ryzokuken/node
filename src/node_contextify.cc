@@ -1035,27 +1035,18 @@ void ContextifyContext::GetWrappedFunction(
 
     for (int32_t n = 0; n < params_len; n++) {
       Local<Value> val = params_buf->Get(context, n).ToLocalChecked();
-      if (val->IsString()) {
-        params[n] = val.As<String>();
-      } else {
-        ContextifyScript::DecorateErrorStack(env, try_catch);
-        try_catch.ReThrow();
-        return;
-      }
+      CHECK(val->IsString());
+      params[n] = val.As<String>();
     }
   } else {
-    params_len = 5;
-    params = new Local<String>[5];
-
-    params[0] = env->module_parameter_exports();
-    params[1] = env->module_parameter_require();
-    params[2] = env->module_parameter_module();
-    params[3] = env->module_parameter_filename();
-    params[4] = env->module_parameter_dirname();
+    params_len = 0;
+    params = nullptr;
   }
 
   MaybeLocal<Function> maybe_fun = ScriptCompiler::CompileFunctionInContext(
       context, &source, params_len, params, 0, nullptr, options);
+
+  delete params;
 
   Local<Function> fun;
   if (maybe_fun.IsEmpty() || !maybe_fun.ToLocal(&fun)) {
