@@ -207,7 +207,7 @@ void ContextifyContext::Init(Environment* env, Local<Object> target) {
 
   env->SetMethod(target, "makeContext", MakeContext);
   env->SetMethod(target, "isContext", IsContext);
-  env->SetMethod(target, "getWrappedFunction", GetWrappedFunction);
+  env->SetMethod(target, "compileFunction", CompileFunction);
 }
 
 
@@ -952,7 +952,7 @@ class ContextifyScript : public BaseObject {
 };
 
 
-void ContextifyContext::GetWrappedFunction(
+void ContextifyContext::CompileFunction(
     const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   Isolate* isolate = env->isolate();
