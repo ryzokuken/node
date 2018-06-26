@@ -1027,26 +1027,17 @@ void ContextifyContext::GetWrappedFunction(
   Context::Scope scope(parsing_context);
 
   // Read params from params buffer
-  size_t params_len;
-  Local<String>* params;
+  std::vector<Local<String>> params;
   if (!params_buf.IsEmpty()) {
-    params_len = params_buf->Length();
-    params = new Local<String>[params_len];
-
-    for (int32_t n = 0; n < params_len; n++) {
+    for (uint32_t n = 0; n < params_buf->Length(); n++) {
       Local<Value> val = params_buf->Get(context, n).ToLocalChecked();
       CHECK(val->IsString());
-      params[n] = val.As<String>();
+      params.push_back(val.As<String>());
     }
-  } else {
-    params_len = 0;
-    params = nullptr;
   }
 
   MaybeLocal<Function> maybe_fun = ScriptCompiler::CompileFunctionInContext(
-      context, &source, params_len, params, 0, nullptr, options);
-
-  delete params;
+      context, &source, params.size(), params.data(), 0, nullptr, options);
 
   Local<Function> fun;
   if (maybe_fun.IsEmpty() || !maybe_fun.ToLocal(&fun)) {
