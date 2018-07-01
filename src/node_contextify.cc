@@ -207,6 +207,7 @@ void ContextifyContext::Init(Environment* env, Local<Object> target) {
 
   env->SetMethod(target, "makeContext", MakeContext);
   env->SetMethod(target, "isContext", IsContext);
+  env->SetMethod(target, "compileFunction", CompileFunction);
 }
 
 
@@ -949,6 +950,120 @@ class ContextifyScript : public BaseObject {
     MakeWeak();
   }
 };
+
+
+void ContextifyContext::CompileFunction(
+    const FunctionCallbackInfo<Value>& args) {
+  Environment* env = Environment::GetCurrent(args);
+  Isolate* isolate = env->isolate();
+  Local<Context> context = env->context();
+
+  // Argument 1: source code
+  CHECK(args[0]->IsString());
+  Local<String> code = args[0].As<String>();
+
+  // Argument 2: filename
+  CHECK(args[1]->IsString());
+  Local<String> filename = args[1].As<String>();
+
+  // Argument 3: line offset
+  CHECK(args[2]->IsNumber());
+  Local<Integer> line_offset = args[2].As<Integer>();
+
+  // Argument 4: column offset
+  CHECK(args[3]->IsNumber());
+  Local<Integer> column_offset = args[3].As<Integer>();
+
+  // Argument 5: cached data (optional)
+  Local<Uint8Array> cached_data_buf;
+  if (!args[4]->IsUndefined()) {
+    CHECK(args[4]->IsUint8Array());
+    cached_data_buf = args[4].As<Uint8Array>();
+  }
+
+  // Argument 6: produce cache data
+  CHECK(args[5]->IsBoolean());
+  bool produce_cached_data = args[5]->IsTrue();
+
+  // Argument 7: parsing context (optional)
+  Local<Context> parsing_context;
+  if (!args[6]->IsUndefined()) {
+    CHECK(args[6]->IsObject());
+    ContextifyContext* sandbox =
+      ContextifyContext::ContextFromContextifiedSandbox(
+          env, args[6].As<Object>());
+    CHECK_NOT_NULL(sandbox);
+    parsing_context = sandbox->context();
+  } else {
+    parsing_context = context;
+  }
+
+  // Argument 8: params for the function (optional)
+  Local<Array> params_buf;
+  if (!args[7]->IsUndefined()) {
+    CHECK(args[7]->IsArray());
+    params_buf = args[7].As<Array>();
+  }
+
+  // Read cache from cached data buffer
+  ScriptCompiler::CachedData* cached_data = nullptr;
+  if (!cached_data_buf.IsEmpty()) {
+    ArrayBuffer::Contents contents = cached_data_buf->Buffer()->GetContents();
+    uint8_t* data = static_cast<uint8_t*>(contents.Data());
+    cached_data = new ScriptCompiler::CachedData(
+      data + cached_data_buf->ByteOffset(), cached_data_buf->ByteLength());
+  }
+
+  ScriptOrigin origin(filename, line_offset, column_offset);
+  ScriptCompiler::Source source(code, origin, cached_data);
+  ScriptCompiler::CompileOptions options;
+  if (source.GetCachedData() == nullptr) {
+    options = ScriptCompiler::kNoCompileOptions;
+  } else {
+    options = ScriptCompiler::kConsumeCodeCache;
+  }
+
+  TryCatch try_catch(isolate);
+  Context::Scope scope(parsing_context);
+
+  // Read params from params buffer
+  std::vector<Local<String>> params;
+  if (!params_buf.IsEmpty()) {
+    for (uint32_t n = 0; n < params_buf->Length(); n++) {
+      Local<Value> val = params_buf->Get(context, n).ToLocalChecked();
+      CHECK(val->IsString());
+      params.push_back(val.As<String>());
+    }
+  }
+
+  MaybeLocal<Function> maybe_fun = ScriptCompiler::CompileFunctionInContext(
+      context, &source, params.size(), params.data(), 0, nullptr, options);
+
+  Local<Function> fun;
+  if (maybe_fun.IsEmpty() || !maybe_fun.ToLocal(&fun)) {
+    ContextifyScript::DecorateErrorStack(env, try_catch);
+    try_catch.ReThrow();
+    return;
+  }
+
+  if (produce_cached_data) {
+    const ScriptCompiler::CachedData* cached_data =
+      ScriptCompiler::CreateCodeCacheForFunction(fun, code);
+    bool cached_data_produced = cached_data != nullptr;
+    if (cached_data_produced) {
+      MaybeLocal<Object> buf = Buffer::Copy(
+          env,
+          reinterpret_cast<const char*>(cached_data->data),
+          cached_data->length);
+      fun->Set(env->cached_data_string(), buf.ToLocalChecked());
+    }
+    fun->Set(
+        env->cached_data_produced_string(),
+        Boolean::New(isolate, cached_data_produced));
+  }
+
+  args.GetReturnValue().Set(fun);
+}
 
 
 void Initialize(Local<Object> target,

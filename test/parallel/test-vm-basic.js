@@ -128,3 +128,30 @@ const vm = require('vm');
              'Received type object'
   });
 });
+
+// vm.compileFunction
+{
+  assert.strictEqual(
+    vm.compileFunction('console.log("Hello, World!")').toString(),
+    'function () {\nconsole.log("Hello, World!")\n}'
+  );
+
+  assert.strictEqual(
+    vm.compileFunction(
+      'return p + q + r + s + t',
+      ['p', 'q', 'r', 's', 't']
+    )('ab', 'cd', 'ef', 'gh', 'ij'),
+    'abcdefghij'
+  );
+
+  vm.compileFunction('return'); // Should not throw on 'return'
+
+  common.expectsError(() => {
+    vm.compileFunction(
+      '});\n\n(function() {\nconsole.log(1);\n})();\n\n(function() {'
+    );
+  }, {
+    type: SyntaxError,
+    message: 'Unexpected token }'
+  });
+}
