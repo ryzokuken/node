@@ -694,6 +694,7 @@
         'generate_bytecode_builtins_list',
         'run_torque',
         'v8_maybe_icu',
+        'zlib.gyp:zlib'
       ],
       'includes': ['inspector.gypi'],
       'direct_dependent_settings': {
